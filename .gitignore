@@ -1,6 +1,25 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
-.venv/
+*.py[cod]
+*$py.class
+
+# SQLite 数据库文件
+services/camera_backend/camera.db
+
+# 虚拟环境
+env/
+venv/
+*.env
+
+# VSCode、PyCharm 等编辑器配置
+.vscode/
+.idea/
+
+# 日志文件
 *.log
-data/
-runs/
+
+# macOS 临时文件
 .DS_Store
+
+# Docker
+docker-compose.override.yml

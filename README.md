@@ -62,23 +62,34 @@
 ## 目录结构说明
 
 ```text
-vision-platform/
-├─ services/                  # 每个微服务独立容器
-│   ├─ rtsp/                  # MediaMTX 配置 + Dockerfile
-│   ├─ cvat/                  # CVAT 容器定制（nginx 反代等）
-│   ├─ training/              # YOLOv8 训练脚本 & Dockerfile
-│   ├─ inference/             # FastAPI 推理服务
-│   └─ ros2_bridge/           # 后期 ROS2 Node
-├─ scripts/                   # 辅助脚本（推流、数据转换…）
-│   └─ ingest_video.sh
-├─ data/                      # 挂载的数据占位
-├─ docs/                      # 规范、设计稿、会议纪要
-├─ .github/
-│   └─ workflows/             # 需要改
-├─ docker-compose.yml         # 一键编排所有服务
-├─ README.md                  # 本文件
-├─ .gitignore
-└─ LICENSE                    # 开源协议
+vision/                     # 项目根目录
+├─ pics/                    # 存放抓取的帧图片、可视化结果等
+├─ scripts/                 # 辅助脚本：推流、帧抓取、数据初始化等
+│   ├─ __pycache__/         # Python 字节码缓存
+│   ├─ grab_frames.py       # 从视频/RTSP 流抓取帧的脚本
+│   ├─ ingest_video.sh      # 视频数据导入/预处理的 Shell 脚本
+│   └─ seed_devices.py      # 初始化并插入测试设备到 SQLite 的脚本
+├─ services/                # 各微服务代码目录
+│   ├─ __init__.py          # 包标识
+│   ├─ camera_backend/      # “摄像设备管理”后端服务
+│   │   ├─ __init__.py      
+│   │   ├─ app.py           # FastAPI 主入口，路由定义
+│   │   ├─ camera.db        # 本地 SQLite 数据库文件
+│   │   ├─ models.py        # SQLAlchemy ORM 模型定义
+│   │   ├─ quick_add.py     # 快速插入设备测试数据的小工具
+│   │   ├─ schemas.py       # Pydantic 请求/响应模型
+│   │   └─ utils.py         # 设备在线检测等工具函数
+│   ├─ cvat/                # CVAT 容器定制（nginx 反代、插件等）
+│   ├─ inference/           # 推理服务（FastAPI + 模型加载）
+│   ├─ ros2_bridge/         # ROS2-HTTP 桥接节点服务
+│   ├─ rtsp/                # RTSP 服务配置与 Dockerfile
+│   └─ training/            # 训练服务（YOLOv8 训练脚本 & Dockerfile）
+├─ test/                    # 测试用例（单元测试、集成测试）
+├─ .gitignore               # Git 忽略配置
+├─ docker-compose.yml       # 一键启动所有服务的编排文件
+├─ README.md                # 项目说明文档
+└─ remind_me.md             # 个人待办/笔记  
+
 ```
 
 > 空目录通过 `.gitkeep` 或 README 占位。
