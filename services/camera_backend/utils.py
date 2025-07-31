@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import socket
 from datetime import datetime, timezone
+from typing import Any, Dict
 from urllib.parse import urlparse
 
 
@@ -14,12 +15,12 @@ def _tcp_ping(host: str, port: int, timeout: float) -> bool:
     """简单的 TCP 连接探测。
 
     Args:
-        host (str): 目标主机。
-        port (int): 目标端口。
-        timeout (float): 秒级超时时间。
+        host (str): 目标主机地址。
+        port (int): 目标端口号。
+        timeout (float): 超时时间，单位秒。
 
     Returns:
-        bool: 如果能在超时时间内建立连接则为 True，否则 False。
+        bool: 在指定超时时间内能建立 TCP 连接返回 True，否则返回 False。
     """
     try:
         with socket.create_connection((host, port), timeout=timeout):
@@ -28,55 +29,59 @@ def _tcp_ping(host: str, port: int, timeout: float) -> bool:
         return False
 
 
-def check_device_online(device: dict, timeout: float = 2.0) -> dict:
-    """检查单个设备在线状态（快速，不阻塞）。
+def check_device_online(device: Dict[str, Any], timeout: float = 2.0) -> Dict[str, Any]:
+    """检查单个设备的在线状态并记录最近在线时间。
+
+    根据设备协议（ONVIF 或 RTSP）进行 TCP 探测，并在探测成功时记录当前 UTC 时间。
 
     Args:
-        device (dict): 包含以下字段：
-            - id (int)
-            - name (str)
-            - protocol (str): "onvif" 或 "rtsp"
-            - url (str): ONVIF "IP:PORT" 或 RTSP URL。
-        timeout (float): TCP 探测超时时间（秒）。
+        device (Dict[str, Any]): 包含以下字段的字典：
+            - id (int): 设备唯一标识。
+            - name (str): 设备名称。
+            - protocol (str): 协议类型，"onvif" 或 "rtsp"。
+            - url (str): 对应协议的连接地址，ONVIF 为 "IP:PORT"，RTSP 为 URL。
+        timeout (float): TCP 探测超时时间，单位秒。
 
     Returns:
-        dict: 包含以下字段：
-            - id (int)
-            - name (str)
-            - protocol (str)
-            - url (str)
-            - online (bool)
-            - last_seen (str | None): ISO 8601 UTC 时间
+        Dict[str, Any]: 包含以下键：
+            - id (int): 设备 ID。
+            - name (str): 设备名称。
+            - protocol (str): 协议类型。
+            - url (str): 连接地址。
+            - online (bool): 是否在线。
+            - last_seen (str | None): 最近在线时间的 ISO 8601 UTC 字符串；如果未在线则为 None。
     """
-    protocol = device["protocol"].lower()
+    protocol = device.get("protocol", "").lower()
     online = False
     last_seen: str | None = None
 
-    try:
-        if protocol == "onvif":
+    if protocol == "onvif":
+        # ONVIF 格式: "IP:PORT"
+        try:
             ip, port_str = device["url"].split(":")
             port = int(port_str)
-            online = _tcp_ping(ip, port, timeout)
-        elif protocol == "rtsp":
-            parsed = urlparse(device["url"])
-            host = parsed.hostname or ""
-            port = parsed.port or 554
-            online = _tcp_ping(host, port, timeout)
-        else:
-            # 未知协议，直接判离线
+        except (KeyError, ValueError):
             online = False
-
-        if online:
-            last_seen = datetime.now(timezone.utc).isoformat()
-    except Exception:
+        else:
+            online = _tcp_ping(ip, port, timeout)
+    elif protocol == "rtsp":
+        # RTSP 格式: "rtsp://hostname:port/..."
+        parsed = urlparse(device.get("url", ""))
+        host = parsed.hostname or ""
+        port = parsed.port or 554
+        online = _tcp_ping(host, port, timeout)
+    else:
+        # 未知协议，视为离线
         online = False
-        last_seen = None
+
+    if online:
+        last_seen = datetime.now(timezone.utc).isoformat()
 
     return {
-        "id": device["id"],
-        "name": device["name"],
-        "protocol": device["protocol"],
-        "url": device["url"],
+        "id": device.get("id"),
+        "name": device.get("name"),
+        "protocol": device.get("protocol"),
+        "url": device.get("url"),
         "online": online,
         "last_seen": last_seen,
     }

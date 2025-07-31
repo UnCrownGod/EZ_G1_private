@@ -1,2 +1,4 @@
-# services/camera_backend/__init__.py
-"""Camera Backend package."""
+# services/__init__.py
+"""
+服务模块根包。
+"""
