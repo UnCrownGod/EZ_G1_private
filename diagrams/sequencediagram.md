@@ -1,145 +1,118 @@
 ```mermaid
 
+%% 摄像设备后端完整交互图（含中文说明，版本 2025-07-31）
 sequenceDiagram
-    %% ───────────────────────── 参与方 ─────────────────────────
-    participant U  as 客户端
-    participant A  as app.py
-    participant DR as devicesRouter
-    participant PR as paramsRouter
-    participant CR as controlRouter
-    participant SR as snapshotsRouter
-    participant NR as discoveryRouter
-    participant MR as metricsWS
-    participant DB as camera.db
-    participant UT as utils.py
-    participant AD as adapters.py
+    %% ───────── 参与者（对应真实文件） ─────────
+    participant Client as 客户端（浏览器 / PowerShell）
+    participant App as app.py
+    participant DR as devices_router.py
+    participant CR as control_router.py
+    participant PR as params_router.py
+    participant DiR as discovery_router.py
+    participant MR as metrics_ws_router.py
+    participant SR as snapshots_router.py
+    participant Utils as utils.py
+    participant Adapters as adapters.py
+    participant Schemas as schemas.py
+    participant DB as db.py<br/>(SessionLocal, SQLite)
     participant FS as 文件系统
+    participant Monitor as monitor.py
 
-    %% 1️⃣ 在线列表
-    U  ->> A  : GET /devices/status
-    note right of A  : FastAPI 路由到 devicesRouter.listDeviceStatus
-    A  ->> DR : listDeviceStatus()
-    note right of DR : 启动线程池并查表
-    DR ->> DB : SessionLocal().query(Device).all()
-    note right of DB : ORM 查询 devices 表
-    DR ->> UT : checkDeviceOnline(dev,t)
-    note right of UT : TCP / RTSP / ONVIF 探测连通性
-    UT -->> DR : 返回 online、last_seen
-    DR -->> A  : DeviceStatusOut[]
-    note right of A  : Pydantic 序列化为列表
-    A  -->> U  : 200 OK（JSON）
+    %% ───────── 1. 在线状态列表 ─────────
+    note over Client,App: 客户端请求“所有摄像头实时在线状态”
+    Client->>App: **GET** /devices/status
+    note right of App: FastAPI 路由 → DR.list_device_status
+    App->>DR: list_device_status()
 
-    %% 1-b️⃣ 单设备测试
-    U  ->> A  : GET /devices/1/test
-    note right of A  : 路由到 devicesRouter.testDevice
-    A  ->> DR : testDevice(1)
-    DR ->> UT : checkDeviceOnline()
-    UT -->> DR : 在线状态
-    DR -->> A  : DeviceStatusOut
-    A  -->> U  : 200 OK
+    note right of DR: 调用 SessionLocal<br/>查询 devices 表
+    DR->>DB: SessionLocal().query(Device).all()
+    note right of DB: 执行 SQL<br/>SELECT * FROM devices
+    DB-->>DR: ORM 结果列表
 
-    %% 2️⃣ 设备创建
-    U  ->> A  : POST /devices（DeviceCreate）
-    note right of A  : 路由到 devicesRouter.createDevice
-    A  ->> DR : createDevice(body)
-    DR ->> DB : INSERT devices …
-    note right of DB : 写入并返回自增 ID
-    DR ->> DB : refresh(device)
-    DR -->> A  : DeviceOut
-    A  -->> U  : 201 已创建
+    loop 遍历每台设备
+        note right of Utils: TCP 端口探测<br/>RTSP 554 / ONVIF 自带端口
+        DR->>Utils: check_device_online(dev)
+        Utils-->>DR: online ✔/✘ + last_seen
+    end
 
-    %% 2-b️⃣ 设备更新
-    U  ->> A  : PUT /devices/1
-    note right of A  : 路由到 devicesRouter.updateDevice
-    A  ->> DR : updateDevice(1,body)
-    DR ->> DB : UPDATE devices SET …
-    DR ->> DB : refresh(device)
-    DR -->> A  : DeviceOut
-    A  -->> U  : 200 OK
+    note right of Schemas: DeviceStatusOut → JSON
+    DR->>Schemas: 序列化
+    DR-->>App: List[DeviceStatusOut]
+    App-->>Client: 200 OK(JSON)
 
-    %% 3️⃣ 参数列表
-    U  ->> A  : GET /devices/1/params
-    note right of A  : 路由到 paramsRouter.getParams
-    A  ->> PR : getParams(1)
-    PR ->> DB : 查询 device_params 表
-    PR -->> A  : DeviceParamOut[]
-    A  -->> U  : 200 OK
+    %% ───────── 2. 单设备在线测试 ─────────
+    note over Client: 点击“测试连接”按钮
+    Client->>App: **GET** /devices/1/test
+    App->>DR: test_device()
+    DR->>DB: SessionLocal().query(Device).get(1)
+    DR->>Utils: check_device_online(...)
+    Utils-->>DR: 结果
+    DR->>Schemas: DeviceStatusOut
+    DR-->>App: DeviceStatusOut
+    App-->>Client: 200 OK
 
-    %% 3-b️⃣ 参数新增
-    U  ->> A  : POST /devices/1/params
-    note right of A  : 路由到 paramsRouter.addParam
-    A  ->> PR : addParam(1,body)
-    PR ->> DB : INSERT device_params …
-    PR ->> DB : refresh(param)
-    PR -->> A  : DeviceParamOut
-    A  -->> U  : 201 已创建
+    %% ───────── 3. 设备创建 / 更新 ─────────
+    note over Client: 提交摄像头配置表单
+    Client->>App: **POST** /devices {DeviceCreate}
+    note right of Schemas: DeviceCreate 校验字段
+    App->>DR: create_device()
+    DR->>DB: INSERT INTO devices
+    DR->>Schemas: DeviceOut
+    DR-->>App: DeviceOut
+    App-->>Client: 201 Created
 
-    %% 3-c️⃣ 参数修改
-    U  ->> A  : PUT /devices/1/params/1
-    note right of A  : 路由到 paramsRouter.updateParam
-    A  ->> PR : updateParam(1,1,body)
-    PR ->> DB : UPDATE device_params …
-    PR ->> DB : refresh(param)
-    PR -->> A  : DeviceParamOut
-    A  -->> U  : 200 OK
+    Client->>App: **PUT** /devices/1 {DeviceCreate}
+    App->>DR: update_device()
+    DR->>DB: SELECT + UPDATE
+    DR->>Schemas: DeviceOut
+    DR-->>App: DeviceOut
+    App-->>Client: 200 OK
 
-    %% 3-d️⃣ 参数删除
-    U  ->> A  : DELETE /devices/1/params/1
-    note right of A  : 路由到 paramsRouter.deleteParam
-    A  ->> PR : deleteParam(1,1)
-    PR ->> DB : DELETE device_params
-    PR -->> A  : 204
-    A  -->> U  : 204 无内容
+    %% ───────── 4. 参数管理 CRUD ─────────
+    note over PR: 设备自定义键值对
+    Client->>App: **POST** /devices/1/params
+    App->>PR: add_param()
+    PR->>DB: INSERT INTO device_params
+    PR->>Schemas: DeviceParamOut
+    PR-->>App: DeviceParamOut
+    App-->>Client: 201 Created
 
-    %% 4️⃣ 拍照快照
-    U  ->> A  : POST /devices/1/control snapshot
-    note right of A  : 路由到 controlRouter.controlDevice
-    A  ->> CR : controlDevice(1)
-    CR ->> DB : 查询设备
-    CR ->> AD : getAdapter(device)
-    AD ->> AD : captureSnapshot() 使用 cv2
-    AD ->> FS : 保存 snapshots/1/xxx.jpg
-    AD -->> CR : 返回文件路径
-    CR -->> A  : ControlOut
-    A  -->> U  : 200 OK（路径）
+    %% ───────── 5. 快照拍照 ─────────
+    note over CR: 根据协议选择适配器
+    Client->>App: **POST** /devices/1/control {"action":"snapshot"}
+    App->>CR: control_device()
+    CR->>DB: SELECT Device BY id
+    CR->>Adapters: get_adapter(device)
+    note right of Adapters: OpenCV 抓帧 → 保存 JPEG
+    Adapters->>FS: snapshots/1/<ts>.jpg
+    Adapters-->>CR: 文件路径
+    CR->>Schemas: ControlOut
+    CR-->>App: ControlOut
+    App-->>Client: 200 OK
 
-    %% 5️⃣ 快照文件
-    U  ->> A  : GET /devices/1/snapshots
-    note right of A  : 路由到 snapshotsRouter.listSnapshots
-    A  ->> SR : listSnapshots(1)
-    SR ->> FS : os.listdir()
-    SR -->> A  : 文件名数组
-    A  -->> U  : 200 OK
+    %% ───────── 6. 快照文件管理 ─────────
+    note over SR: 列出 / 下载 / 删除快照
+    Client->>App: **GET** /devices/1/snapshots
+    App->>SR: list_snapshots()
+    SR->>FS: os.listdir()
+    SR-->>App: 文件名数组
+    App-->>Client: 200 OK(JSON)
 
-    U  ->> A  : GET /devices/1/snapshots/{f}
-    note right of A  : downloadSnapshot
-    A  ->> SR : downloadSnapshot
-    SR ->> FS : 打开文件
-    SR -->> A  : FileResponse
-    A  -->> U  : JPEG 二进制
+    %% ───────── 7. 同网段设备发现 ─────────
+    note over DiR: 线程池并发扫描 IP:port
+    Client->>App: **GET** /devices/network?prefix=…
+    App->>DiR: discover_devices()
+    DiR->>Socket: create_connection ×N
+    Socket-->>DiR: 成功/失败
+    DiR-->>App: 在线 IP 列表
+    App-->>Client: 200 OK(JSON)
 
-    U  ->> A  : DELETE /devices/1/snapshots/{f}
-    note right of A  : deleteSnapshot
-    A  ->> SR : deleteSnapshot
-    SR ->> FS : 删除文件
-    SR -->> A  : 204
-    A  -->> U  : 204
-
-    %% 6️⃣ 网络发现
-    U  ->> A  : GET /devices/network
-    note right of A  : 路由到 discoveryRouter.discoverDevices
-    A  ->> NR : discoverDevices()
-    NR ->> UT : 并发探测 IP 列表
-    UT -->> NR : 返回在线 IP
-    NR -->> A  : JSON
-    A  -->> U  : 200 OK
-
-    %% 7️⃣ 实时监控 WS
-    U  ->> A  : WS /ws/devices/1/metrics
-    note right of A  : 路由到 metrics_ws_router.metricsWS
-    A  ->> MR : metricsWS(ws,1)
+    %% ───────── 8. WebSocket 实时监控 ─────────
+    note over MR: 每秒采样 N 帧计算 FPS
+    ClientWebSocket->>App: **WS** /ws/devices/1/metrics
+    App->>MR: metrics_ws()
     loop 每秒
-        MR ->> DB : 查询设备信息
-        MR ->> MR : getMetrics(采样帧数)
-        MR -->> U  : {"fps":30,"resolution":"…"}
+        MR->>Monitor: get_metrics(url,N)
+        Monitor-->>MR: {"fps","resolution","dropped"}
+        MR-->>ClientWebSocket: send_json()
     end
