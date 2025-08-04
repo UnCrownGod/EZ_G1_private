@@ -1,0 +1,18 @@
+camera_backend/
+├── routers/
+│   ├── __init__.py
+│   ├── control_router.py      # 设备控制路由（snapshot/record 等）
+│   ├── devices_router.py      # 设备 CRUD & 在线状态查询
+│   ├── discovery_router.py    # 同网段设备发现接口
+│   ├── metrics_ws_router.py   # WebSocket 推送监控数据
+│   ├── params_router.py       # 设备参数管理 CRUD
+│   └── snapshots_router.py    # 快照列表/下载/删除接口
+├── adapters.py                # ONVIF/RTSP 协议适配器
+├── app.py                     # FastAPI 应用入口（注册所有 routers）
+├── camera.db                  # SQLite 数据库文件
+├── db.py                      # SQLAlchemy Engine & Session 初始化
+├── discovery_utils.py         # 网络发现相关工具函数
+├── metrics_utils.py           # 监控数据采集工具函数
+├── models.py                  # ORM 定义（Device, DeviceParam）
+├── schemas.py                 # Pydantic DTO（请求/响应模型）
+└── utils.py                   # 通用工具（在线检测等）

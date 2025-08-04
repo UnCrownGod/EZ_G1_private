@@ -1,0 +1,18 @@
+annotation_backend/
+├── app.py               # FastAPI 应用入口（注册所有 router）
+├── config.py            # 全局配置（DB 路径、目录、异步任务设置…）
+├── database.py          # SQLAlchemy & Databases 初始化
+├── models.py            # ORM 定义（Dataset, Image, LabelDef, Annotation）
+├── schemas.py           # Pydantic DTO（请求/响应模型）
+├── utils.py             # 公共工具（文件存储、格式转换…）
+├── scripts/             # 可以考虑移动到service里
+│   └── import_images.py # 批量导入脚本里
+├── routers/
+│   ├── datasets.py      # GET/POST/PUT/DELETE /datasets
+│   ├── images.py        # POST /datasets/{id}/images/import & GET /images 列表
+│   ├── labels.py        # POST/GET/PUT/DELETE /datasets/{id}/labels
+│   ├── annotations.py   # POST/PUT/DELETE /datasets/{id}/annotations
+│   ├── export.py        # GET  /datasets/{id}/export?format=xxx
+│   └── status.py        # PUT  /datasets/{id}/status
+├── requirements.txt     # pip 依赖
+└── Dockerfile           # 容器化部署示例
