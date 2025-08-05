@@ -1,7 +1,7 @@
 annotation_backend/
 ├── app.py               # FastAPI 应用入口（注册所有 router）
 ├── config.py            # 全局配置（DB 路径、目录、异步任务设置…）
-├── database.py          # SQLAlchemy & Databases 初始化
+├── db.py                # SQLAlchemy & Databases 初始化
 ├── models.py            # ORM 定义（Dataset, Image, LabelDef, Annotation）
 ├── schemas.py           # Pydantic DTO（请求/响应模型）
 ├── utils.py             # 公共工具（文件存储、格式转换…）

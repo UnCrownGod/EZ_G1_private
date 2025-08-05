@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+databases[sqlite]
+alembic
+pydantic
+opencv-python
+Pillow
+aiofiles
+python-multipart
+celery
+redis

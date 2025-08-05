@@ -12,6 +12,43 @@ python -m uvicorn services.camera_backend.app:app --reload --port 8000
 
 
 
+conda env order:
+---------------------------------------------------
+conda create -n ann_backend python=3.10 -y
+conda activate ann_backend
+pip install \
+  fastapi \
+  uvicorn[standard] \
+  sqlalchemy \
+  databases[sqlite] \
+  alembic \
+  pydantic \
+  opencv-python \
+  Pillow \
+  aiofiles \
+  python-multipart
+# 异步任务
+pip install celery redis
+
+requirment.txt
+---------------------------------------------------
+fastapi
+uvicorn[standard]
+sqlalchemy
+databases[sqlite]
+alembic
+pydantic
+opencv-python
+Pillow
+aiofiles
+python-multipart
+celery
+redis
+
+
+
+
+
 Brainstorm:二维码/库存管理
 识别`
     场景`
