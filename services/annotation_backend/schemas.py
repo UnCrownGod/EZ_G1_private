@@ -1,5 +1,3 @@
-# services/annotation_backend/schemas.py
-
 """
 Pydantic 模型定义：数据校验与序列化 DTO。
 """
@@ -8,7 +6,7 @@ from enum import Enum
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from .models import DatasetStatus
 
@@ -44,8 +42,8 @@ class DatasetOut(DatasetBase):
     id: int = Field(..., description="数据集 ID")
     status: DatasetStatus = Field(..., description="数据集当前状态")
 
-    class Config:
-        orm_mode = True
+    # Pydantic V2 配置：允许从 ORM 对象读取属性
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ----- Image Schemas ----- #
@@ -57,8 +55,7 @@ class ImageOut(BaseModel):
     file_path: str = Field(..., description="图片在存储中的路径")
     created_at: datetime = Field(..., description="上传时间")
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ----- Label Schemas ----- #
@@ -85,8 +82,7 @@ class LabelOut(LabelBase):
     id: int = Field(..., description="标签 ID")
     dataset_id: int = Field(..., description="所属数据集 ID")
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ----- Annotation Schemas ----- #
@@ -119,8 +115,7 @@ class AnnotationOut(AnnotationCreate):
     id: int = Field(..., description="标注 ID")
     created_at: datetime = Field(..., description="创建时间")
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ----- Export DTO ----- #

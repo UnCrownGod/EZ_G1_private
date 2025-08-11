@@ -1,5 +1,3 @@
-# services/annotation_backend/routers/export.py
-
 """
 导出标注路由：提供将标注数据导出为 JSON、COCO、YOLO 等格式。
 """
@@ -11,6 +9,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -59,31 +58,28 @@ def export_annotations(
     )
 
     if format == "json":
+        # 使用 jsonable_encoder 确保包含 datetime 在内的数据可被 JSON 序列化
         payload = schemas.ExportJSONOut(
             images=images,
             annotations=annotations,
         )
-        return JSONResponse(content=payload.dict())
+        content = jsonable_encoder(payload)
+        return JSONResponse(content=content)
 
     elif format == "yolo":
         # 将每张图片的标注转换为 YOLO 格式 txt 并打包成 ZIP
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zf:
             for img in images:
-                img_anns = [
-                    ann for ann in annotations if ann.image_id == img.id
-                ]
+                img_anns = [ann for ann in annotations if ann.image_id == img.id]
                 lines = []
                 for ann in img_anns:
-                    # 假设 Annotation 模型包含 xmin,ymin,xmax,ymax,width,height
                     cls_idx = ann.label_id - 1
                     x_center = (ann.xmin + ann.xmax) / 2 / ann.width
                     y_center = (ann.ymin + ann.ymax) / 2 / ann.height
                     w = (ann.xmax - ann.xmin) / ann.width
                     h = (ann.ymax - ann.ymin) / ann.height
-                    lines.append(
-                        f"{cls_idx} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}"
-                    )
+                    lines.append(f"{cls_idx} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
                 txt_name = os.path.splitext(os.path.basename(img.file_path))[0] + ".txt"
                 zf.writestr(txt_name, "\n".join(lines))
         zip_buffer.seek(0)
@@ -94,9 +90,10 @@ def export_annotations(
                 "Content-Disposition": f"attachment; filename=dataset_{dataset_id}_yolo.zip"
             },
         )
-    elif format == "coco":
-        raise HTTPException(status_code=501, detail="COCO export not implemented")
 
+    elif format == "coco":
+        # COCO 格式尚未实现
+        raise HTTPException(status_code=501, detail="COCO export not implemented")
 
     else:
         raise HTTPException(status_code=400, detail="Unsupported export format")
