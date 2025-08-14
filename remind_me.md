@@ -126,7 +126,6 @@ yolo格式（如图例）
 |POST /datasets 新建数据集
 |/images/import 批量图像
 |scripts/import_yolo_annotations.py 导入标注
-
 ----
 4. 技术支持需求
 ----
