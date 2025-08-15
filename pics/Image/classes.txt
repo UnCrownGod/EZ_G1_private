@@ -1,0 +1,4 @@
+plate holder
+1d barcode
+2d barcode
+tube

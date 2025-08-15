@@ -1,0 +1,8 @@
+path: D:\work\vision\runs\yolo_ds_3
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: plate holder
+  1: 1d barcode
+  2: 2d barcode

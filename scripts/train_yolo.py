@@ -4,14 +4,16 @@
 Train YOLO (Ultralytics) with a given data.yaml and preset options.
 使用 Ultralytics YOLO 进行训练，封装常用参数与输出。
 
-Usage:
-    python scripts/train_yolo.py ^
-        --data .\yolo_dataset_ds1\data.yaml ^
-        --model yolov8n.pt ^
-        --imgsz 1280 ^
-        --epochs 100 ^
-        --device 0 ^
-        --name ds1_v8n
+Usage (PowerShell 示例):
+    python scripts/train_yolo.py `
+      --data .\runs\yolo_ds_3\data.yaml `
+      --model yolov8n.pt `
+      --imgsz 640 `
+      --epochs 50 `
+      --batch 8 `
+      --device 0 `
+      --project .\runs\train `
+      --name w_lid_v1
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ def latest_metrics_json(save_dir: Path) -> Optional[Path]:
         Optional[Path]: Path to ``metrics.json`` if present; otherwise ``None``.
 
     Raises:
-        TypeError: If ``save_dir`` is not a ``Path`` instance.
+        TypeError: If ``save_dir`` is not a ``pathlib.Path`` instance.
     """
     if not isinstance(save_dir, Path):
         raise TypeError("save_dir must be a pathlib.Path")
@@ -49,8 +51,9 @@ def train_model(
     model: str = "yolov8n.pt",
     imgsz: int = 1280,
     epochs: int = 100,
-    batch: str = "auto",
+    batch: Optional[int] = None,
     device: str = "0",
+    project: str = "runs/detect",
     name: str = "train",
 ) -> Path:
     """Train a YOLO model and return the run directory.
@@ -62,9 +65,10 @@ def train_model(
         model (str): Base model weights or cfg (e.g., ``yolov8n.pt``).
         imgsz (int): Image size for training/validation.
         epochs (int): Number of training epochs.
-        batch (str): Batch size (integer string or ``'auto'``).
+        batch (Optional[int]): Batch size；``None`` 表示由 YOLO 自动决定。
         device (str): CUDA device id (e.g., ``'0'``) or ``'cpu'``.
-        name (str): Run name under ``runs/detect/``.
+        project (str): Root directory for saving runs (e.g., ``runs/train``).
+        name (str): Run name under ``project`` directory.
 
     Returns:
         Path: The directory where training artifacts are saved.
@@ -83,18 +87,22 @@ def train_model(
         raise ValueError("epochs must be > 0")
 
     yolo = YOLO(model)
-    results = yolo.train(
+    train_kwargs = dict(
         data=str(data_p),
         imgsz=imgsz,
         epochs=epochs,
-        batch=batch,
         device=device,
-        project="runs/detect",
+        project=project,
         name=name,
         exist_ok=True,
     )
+    # 仅在用户显式提供时传递 batch，避免类型校验报错
+    if batch is not None:
+        train_kwargs["batch"] = batch
 
-    save_dir = Path(getattr(results, "save_dir", Path("runs/detect") / name))
+    results = yolo.train(**train_kwargs)
+
+    save_dir = Path(getattr(results, "save_dir", Path(project) / name))
     if not save_dir.exists():
         raise RuntimeError("Training finished but save_dir not found.")
     return save_dir
@@ -110,7 +118,7 @@ def parse_args() -> argparse.Namespace:
 
     Returns:
         argparse.Namespace: Parsed arguments with fields ``data``, ``model``,
-        ``imgsz``, ``epochs``, ``batch``, ``device``, ``name``.
+        ``imgsz``, ``epochs``, ``batch``, ``device``, ``project``, ``name``.
 
     Raises:
         SystemExit: If arguments are invalid (raised by ``argparse``).
@@ -120,9 +128,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", default="yolov8n.pt", type=str, help="YOLO weights or cfg")
     parser.add_argument("--imgsz", default=1280, type=int, help="Image size")
     parser.add_argument("--epochs", default=100, type=int, help="Training epochs")
-    parser.add_argument("--batch", default="auto", type=str, help="Batch size (int or 'auto')")
+    parser.add_argument(
+        "--batch",
+        default=None,
+        type=int,
+        help="Batch size (int). Omit for YOLO auto-batch.",
+    )
     parser.add_argument("--device", default="0", type=str, help="CUDA id (e.g. '0') or 'cpu'")
-    parser.add_argument("--name", default="train", type=str, help="Run name under runs/detect/")
+    parser.add_argument("--project", default="runs/detect", type=str, help="Project directory for runs")
+    parser.add_argument("--name", default="train", type=str, help="Run name under project/")
     return parser.parse_args()
 
 
@@ -146,8 +160,9 @@ def main() -> None:
         model=args.model,
         imgsz=args.imgsz,
         epochs=args.epochs,
-        batch=args.batch,
+        batch=args.batch,     # None => auto-batch by YOLO
         device=args.device,
+        project=args.project,
         name=args.name,
     )
     print(f"[DONE] Training artifacts in: {save_dir.resolve()}")
@@ -156,7 +171,6 @@ def main() -> None:
     if mj:
         try:
             metrics = json.loads(mj.read_text(encoding="utf-8"))
-            # 截断打印，避免终端过长
             print("[METRICS]", json.dumps(metrics, ensure_ascii=False)[:1200], "...")
         except Exception as exc:
             print(f"[INFO] metrics.json not readable: {exc!r}")
