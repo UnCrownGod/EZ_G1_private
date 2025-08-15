@@ -145,3 +145,70 @@ annotation_backned
 增加markers路由（需要相机内参）
 机器人侧集成
 条码解码脚本
+
+
+
+
+训练指令cheatsheet
+# 1) 打开 PowerShell
+conda activate ann_backend
+Set-Location D:\work\vision
+# 2) 启动后端（保持此窗口不关）
+python -m uvicorn services.annotation_backend.app:app --reload --port 8000
+---------------------------------------------------------------------------------------
+# 0) 新开一个 PowerShell
+conda activate ann_backend
+Set-Location D:\work\vision
+
+# 1) 创建数据集（改成你的名字/描述）
+$ds = Invoke-RestMethod -Uri http://127.0.0.1:8000/datasets -Method Post -ContentType 'application/json' -Body '{"name":"w_lid","description":"plate holder - with lid"}'
+$datasetId = $ds.id
+
+# 2) 批量导入图片（修改为你的图片目录 D:\work\vision\pics\train1）
+Get-ChildItem 'D:\work\vision\pics\train1\*.*' -Include *.jpg,*.jpeg,*.png,*.bmp |
+  ForEach-Object { curl.exe -s -X POST "http://127.0.0.1:8000/datasets/$datasetId/images/import" -F "files=@$($_.FullName)" > $null }
+
+# 3) 导入 YOLO 文本标注（如无可跳过；classes.txt 路径按需修改）
+python scripts\import_yolo_annotations.py `
+  --dataset-id $datasetId `
+  --img-dir "D:\work\vision\pics\train1" `
+  --classes-file "D:\work\vision\pics\train1\classes.txt" `
+  --api-base http://127.0.0.1:8000
+
+# 4) 从后端导出为 YOLO 训练集（自动划分 train/val/test）
+python scripts\export_yolo_dataset.py `
+  --dataset-id $datasetId `
+  --out-dir .\runs\yolo_ds_$datasetId `
+  --val-ratio 0.15 `
+  --test-ratio 0.05 `
+  --api-base http://127.0.0.1:8000
+
+# 5) 训练（Ultralytics YOLO；batch 按显存改，比如 8/16；device=0 用第一块GPU）
+python scripts\train_yolo.py `
+  --data .\runs\yolo_ds_$datasetId\data.yaml `
+  --model yolov8n.pt `
+  --imgsz 640 `
+  --epochs 50 `
+  --batch 8 `
+  --device 0 `
+  --name w_lid_v1
+
+# 6) 在测试集上跑预测（可视化结果）
+yolo predict `
+  model="runs\detect\w_lid_v1\weights\best.pt" `
+  source="runs\yolo_ds_$datasetId\images\test" `
+  device=0 `
+  project="runs\detect" name="pred_ds$datasetId"
+
+# 7) 在测试集上做评估（得到 P/R/mAP）
+yolo val `
+  model="runs\detect\w_lid_v1\weights\best.pt" `
+  data="runs\yolo_ds_$datasetId\data.yaml" `
+  split=test `
+  device=0 `
+  project="runs\detect" name="val_ds$datasetId"
+
+# 8) 打开结果目录（可选）
+explorer .\runs\detect\w_lid_v1
+explorer .\runs\detect\pred_ds$datasetId
+explorer .\runs\detect\val_ds$datasetId
