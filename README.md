@@ -1,148 +1,201 @@
 # Vision-Platform
 
-> **简介**：面向实验室场景的视觉自动化平台，覆盖 **“设备接入 → 图像采集 → 数据标注 → 训练推理 → 机器人执行”** 全链路，并预留 ROS 2 对接。
->
-> 当前版本已完成 **摄像设备管理子系统 (`camera_backend`)**，后续将逐步补齐训练、推理、标注与监控能力。
+> 面向实验室的视觉自动化平台：**相机接入 → 数据标注 → 训练/评估 → 推理服务 →（预留）机器人对接**。
+> 当前重点：**板架（plate holder）检测**的离线训练与本地推理；相机后台与数据管理脚本已就绪，ROS2/机械臂对接留待到货后在现场落地。
 
 ---
 
-## 1 · 当前成果
+## 0. 已实现功能
 
-| 模块                      | 功能摘要                                                                                                                                                   | 进度 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -- |
-| **camera\_backend**     | • 设备 CRUD（添加 / 编辑 / 删除）<br>• 在线状态检测（并发 TCP ping）<br>• 同网段自动发现<br>• ONVIF / RTSP 快捷测试<br>• 远程控制：拍照（已完成）/ 录像（筹备）<br>• WebSocket 实时指标推送 (fps / 分辨率 / 丢帧率) | ✅  |
-| **inference\_service**  | • FastAPI + YOLOv8 最小推理接口 (完成)<br>• WebSocket 批量流推理（进行中）                                                                                               | 🔄 |
-| **annotation\_backend** | • CVAT 容器化部署（完成）<br>• 数据集接口（增删改查）                                                                                                                      | 🔄 |
-| **training\_service**   | • Ultralytics YOLOv8 Docker 化<br>• 训练任务队列 / GPU 调度                                                                                                     | 🔄 |
-| **monitor stack**       | • Prometheus + Grafana / Loki 日志                                                                                                                       | 🔄 |
-| **ros2\_bridge**        | • rclpy ↔ HTTP 桥接                                                                                                                                      | 🔄 |
+* ✅ **相机后台 `camera_backend`**：设备 CRUD、在线探测、快照、WS 指标。
+* ✅ **数据集工作流（两种）**
 
-> ✅ 已完成 🔄 开发中 ⭕ 计划中
-
----
-
-## 2 · 系统架构（高层）
-
-```text
-Vision-Platform
-├─ 前端
-│   ├─ 设备管理         — 调参 / 状态 / 日志
-│   ├─ 标注 / 训练      — 数据集 & 模型
-│   └─ 监控面板         — FPS / GPU / 告警
-├─ 后端微服务
-│   ├─ camera_backend   — 摄像头 & 机械臂管理
-│   ├─ inference_srv    — 推理 REST / WS
-│   ├─ annotation_srv   — 数据集 & 标注 API
-│   ├─ training_srv     — 训练任务调度
-│   └─ ros2_bridge      — ROS 2 ↔ HTTP
-├─ 基础设施
-│   ├─ MediaMTX + FFmpeg — RTSP 转发 / 录像
-│   ├─ MinIO + DVC      — 数据 / 模型版本
-│   ├─ Prometheus stack — 监控告警
-│   └─ docker-compose   — 本地一键启动
-└─ 部署
-    ├─ Nginx / Traefik LB
-    └─ GitHub Actions CI/CD
-```
+  * A. **纯文件法（推荐）**：`datasets/<name>/images|labels/{train,val,test}` + `data.yaml` → 直接训练/验证/预测。
+  * B. **后端导出法**：`annotation_backend` 入库 → `export_yolo_dataset.py` 一键导出为 YOLO 目录。
+* ✅ **训练脚本**：`scripts/train_yolo.py`（已在你机上产出 `runs/detect/w_lid_v1`）。
+* ✅ **标注质量检查**：`scripts/lint_yolo_labels.py`。
+* ✅ **批量预测与可视化**：`scripts/predict_visualize.py`。
+* 🧩 **配置**：`configs/*.yaml` 保存相机、标定、抓取工作点等参数（文本可版控）。
+* 🔌 **（预留）ROS 2 桥**：`services/ros2_bridge/`，待实物到位后连通话题。
 
 ---
 
-## 3 · 目录结构
+## 1. 目录结构（与仓库保持一致）
 
 ```text
 vision/
-├─ scripts/                 # 推流、抓帧、初始化
-├─ services/
-│   ├─ camera_backend/
-│   │   ├─ app.py           # FastAPI 主入口
-│   │   ├─ routers/         # devices / control / metrics / ...
-│   │   ├─ adapters.py      # ONVIF / RTSP 操作
-│   │   ├─ models.py        # SQLAlchemy ORM
-│   │   ├─ schemas.py       # Pydantic DTO
-│   │   └─ utils.py         # 在线检测 / 快照
-│   ├─ inference/           # YOLO 推理服务
-│   ├─ annotation_backend/  # 标注服务
-│   ├─ training/            # 训练容器
-│   └─ ros2_bridge/         # ROS2 节点
-├─ docker-compose.yml       # 一键环境
-└─ README.md                # 本文件
+├─ configs/                 # 文本配置：相机/几何/抓取参数等（可版控）
+├─ datasets/                # 训练数据（标准 YOLO 目录：images/labels + data.yaml）
+├─ docs/                    # 说明与图
+├─ exports/                 # 环境/依赖导出等
+├─ pics/                    # 原始图片/临时预测输入
+├─ robot/                   # 未来：抓取/标定脚本与ROS2接口
+├─ runs/                    # 训练与预测输出（Ultralytics 自动生成）
+├─ scripts/                 # 训练/导出/校验/预测等脚本
+├─ services/                # camera_backend / annotation_backend / inference / ...
+├─ docker-compose.yml
+└─ requirements.txt
 ```
 
+> 提示：`runs/` 与 `datasets/` **不入库大文件**时，可结合 DVC/MinIO；目前先本地开发为主。
+
 ---
 
-## 4 · 快速试用 `camera_backend`
+## 2. 快速开始（Windows PowerShell）
 
-```bash
-# 1. 环境准备
-git clone https://<your-repo>/vision.git && cd vision
-python -m venv .venv && source .venv/bin/activate        # Windows 用 venv\Scripts\activate
-pip install -r requirements.txt
+> 目标：**不依赖任何 .db**，用**纯文件法**从 0 到训练/验证/预测。
+> 已有数据可直接把 `datasets/<你的数据集>/` 放到仓库里；若使用后端导出法，见下一节。
 
-# 2. 启动后端
-uvicorn services.camera_backend.app:app --reload --port 8000
+### 2.1 环境准备
 
-# 3. 初始化测试设备
-python scripts/seed_devices.py
-
-# 4. Swagger 文档
-open http://127.0.0.1:8000/docs
+```powershell
+cd vision
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-> **RTSP 推流**
->
-> `./scripts/ingest_video.sh sample.mp4` → `rtsp://localhost:8554/mystream`
+> 说明：仓库里 `yolov8n.pt` 是 YOLOv8 nano 预训练权重；若决定更改 YOLO11，修改为 `--model yolo11n.pt` 即可。
 
-\### 常用端点
+### 2.2（可选）检查标注质量
 
-| 方法       | 路径                                                      | 说明                 |
-| -------- | ------------------------------------------------------- | ------------------ |
-| **GET**  | `/devices/status`                                       | 列出所有设备 + 在线状态      |
-| **POST** | `/devices`                                              | 新增设备（含网络 & 镜头配置）   |
-| **POST** | `/devices/{id}/control` Payload `{"action":"snapshot"}` | 远程拍照，返回快照路径        |
-| **WS**   | `/ws/devices/{id}/metrics?sample_frames=60`             | 推送 fps / 分辨率 / 丢帧率 |
-
----
-
-## 5 · 技术栈
-
-| 领域     | 组件                                | 说明           |
-| ------ | --------------------------------- | ------------ |
-| 视频流    | MediaMTX / FFmpeg                 | RTSP 推流 + 转发 |
-| 标注     | CVAT                              | Web 标注       |
-| 深度学习   | PyTorch / Ultralytics YOLOv8      | 训练 & 推理      |
-| 服务端    | FastAPI                           | REST / WS    |
-| 数据库存储  | SQLite (Dev) / MySQL (Prod)       | 元数据          |
-| 对象存储   | MinIO (S3) + DVC                  | 数据集 / 模型     |
-| 监控日志   | Prometheus + Grafana / Loki       | 指标 & 日志      |
-| DevOps | Docker / Compose · GitHub Actions | 部署 & CI      |
-| 机器人    | ROS 2 (rclpy)                     | 与 Unitree 通讯 |
-
----
-
-## 6 · 下一步计划
-
-1. **标注后端**：CVAT Webhook → 自动整理数据集 → API 暴露下载；
-2. **训练服务**：容器化 YOLOv8，支持 GPU 任务队列；
-3. **推理服务升级**：Triton / TorchServe，支持 batch & 伸缩；
-4. **ROS 2 Bridge**：发布 `/vision/detections`，供机器人订阅；
-5. **可观测性**：Prometheus exporter + Grafana dashboard；Loki 收集日志。
-
----
-
-## 7 · 贡献规范
-
-```text
-feat(camera): 支持 RTSP 预置位控制
-fix(router): 修复设备在线检测空列表问题
-docs(README): 新增快速开始
+```powershell
+python scripts\lint_yolo_labels.py `
+  --images .\datasets\w_lid\images\train `
+  --labels .\datasets\w_lid\labels\train `
+  --classes "plate holder,1d barcode,2d barcode"
 ```
 
-* **提交格式**：`type(scope): message`
-* **代码风格**：Google Python Style，`ruff` 自动格式化
-* **测试**：新增 / 修改功能需附 curl / pytest 用例
+### 2.3 训练
+
+```powershell
+python scripts\train_yolo.py `
+  --data .\datasets\w_lid\data.yaml `
+  --model yolov8n.pt `
+  --imgsz 640 `
+  --epochs 50 `
+  --batch 8 `
+  --device 0 `
+  --name w_lid_v1
+```
+
+产物：`runs\detect\w_lid_v1\weights\best.pt`、曲线图与混淆矩阵等。
+
+### 2.4 验证（测试集）
+
+```powershell
+yolo val model="runs\detect\w_lid_v1\weights\best.pt" `
+         data="datasets\w_lid\data.yaml" `
+         split=test device=0
+```
+
+### 2.5 批量预测与可视化
+
+```powershell
+python scripts\predict_visualize.py `
+  --weights .\runs\detect\w_lid_v1\weights\best.pt `
+  --source  .\pics\wo_lid `
+  --out-dir .\runs\demo\wo_lid
+```
+
+输出：标框后的图片与 `labels/xxx.txt`。
 
 ---
 
-## 8 · License
+## 3. 另一种数据工作流：**后端导出法**（需要 .db）
 
-MIT © 2025 Vision‑Lab
+> 适用于要**统一管理多人数据**、或从 CVAT 同步导出的场景。你之前就是这样做的。
+
+1. 启动后端（已内置 SQLite）
+
+```powershell
+uvicorn services.annotation_backend.app:app --port 8000 --reload
+```
+
+2. 通过 API 创建数据集 & 导入图片/YOLO标签（PowerShell 略，同你之前用法）
+3. 导出为标准 YOLO 目录：
+
+```powershell
+python scripts\export_yolo_dataset.py `
+  --dataset-id <id> `
+  --out-dir .\datasets\w_lid `
+  --val-ratio 0.15 `
+  --test-ratio 0.05 `
+  --api-base http://127.0.0.1:8000
+```
+
+接下去用第 2 节的训练/验证/预测命令即可。
+
+> `.db` 是**后端的元数据库**；**训练/推理并不依赖它**。两种工作流任选其一。
+
+---
+
+## 4. 相机后台（可选）
+
+快速试用：
+
+```powershell
+uvicorn services.camera_backend.app:app --reload --port 8000
+python scripts\seed_devices.py
+# 打开 http://127.0.0.1:8000/docs
+```
+
+常用端点：
+
+| 方法   | 路径                                                | 说明          |
+| ---- | ------------------------------------------------- | ----------- |
+| GET  | `/devices/status`                                 | 列设备与在线状态    |
+| POST | `/devices`                                        | 新增设备        |
+| POST | `/devices/{id}/control` + `{"action":"snapshot"}` | 拍照          |
+| WS   | `/ws/devices/{id}/metrics?sample_frames=60`       | fps/分辨率/丢帧率 |
+
+---
+
+## 5. 重要脚本说明
+
+| 脚本                                   | 用途（最常用参数）                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------- |
+| `scripts/train_yolo.py`              | 训练：`--data <data.yaml> --model yolov8n.pt --epochs --imgsz --batch --device --name` |
+| `scripts/lint_yolo_labels.py`        | 标注体检：`--images images/train --labels labels/train --classes "a,b,c"`                |
+| `scripts/predict_visualize.py`       | 批量预测：`--weights best.pt --source pics\foo --out-dir runs\demo\foo`                  |
+| `scripts/export_yolo_dataset.py`     | 从标注后端导出 YOLO 目录                                                                     |
+| `scripts/import_yolo_annotations.py` | 将本地 YOLO 标签入库（若走后端工作流）                                                              |
+| `scripts/grab_frams.py`              | 从 RTSP/视频抓帧（配合相机或流媒体）                                                               |
+| `scripts/ingest_video.sh`            | 把 mp4 推到本地 MediaMTX 形成 RTSP 源                                                       |
+
+**docstring 规范 (Args/Returns/Raises)** 已在这些脚本中统一遵循。
+
+---
+
+## 6. 配置与权重：FAQ
+
+* **`configs/*.yaml`**：纯文本配置，保存相机参数、坐标系、抓取位姿、ROI 等，将来给推理服务与机器人侧统一读取。
+* **`*.db`**：仅用于后端的**元数据**（数据集索引/相机清单）；**不是训练必需品**。
+* **`yolov8n.pt` vs `yolo11n.pt`**：均为官方预训练权重。当前流程默认用 `yolov8n.pt`；想试新版，把 `--model yolo11n.pt` 即可。
+* **Ultralytics 输出路径**：控制台里若出现 `path\to\dir` 文案，那是占位字符串；真实路径请看末行 `Results saved to ...` 与 `runs/...` 目录。
+
+---
+
+## 7. 下一步（offline）
+
+1. 扩充/打磨标注集（含遮挡、倾斜、不同光照），持续用 `lint_yolo_labels.py` 体检。
+2. 训练若干版本（`n/s/m` 模型、不同 `imgsz`/增强策略），在固定验证集对比 `mAP50-95` & 混淆矩阵。
+3. 在 `services/inference/` 补齐**轻量推理 REST/WS**（读取 `configs/inference.yaml`）。
+4. 在 `configs/` 整理**相机外参/场景标定**模板，准备到货后根据现场测量填入。
+5. 预置 `robot/` 中的**抓取参数结构**与**ROS2 消息协议**（话题：`/vision/detections`），等实物到位连通。
+
+---
+
+## 8. 贡献规范
+
+* 提交信息：`type(scope): message`（如 `feat(training): support yolov11n`）
+* 代码风格：Google Python Style，`ruff` 自动格式化
+* 测试：提供 `curl` 或最小复现指令（尤其是训练与导出脚本）
+
+---
+
+## 9. License
+
+MIT © 2025 Vision-Lab
+
+---
