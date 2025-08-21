@@ -24,10 +24,10 @@ from typing import Optional, Tuple
 import numpy as np
 import cv2
 
-from perception.apriltag_pose import CameraModel, detect_apriltags
-from perception.yolo_detect import YoloDetector
-from planning.handeye import load_yaml, compose
-from planning.grasp_planner import make_grasp_from_tag
+from robot.perception.apriltag_pose import CameraModel, detect_apriltags
+from robot.perception.yolo_detect import YoloDetector
+from robot.planning.handeye import load_yaml, compose
+from robot.planning.grasp_planner import make_grasp_from_tag
 
 
 def crop_to_roi(bgr: np.ndarray, xyxy: Tuple[float, float, float, float]) -> tuple[np.ndarray, tuple[int,int,int,int]]:
