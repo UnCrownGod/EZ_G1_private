@@ -221,3 +221,10 @@ yolo val `
 explorer .\path\to\dir\detect\w_lid_v1
 explorer .\path\to\dir\detect\pred_ds$datasetId
 explorer .\path\to\dir\detect\val_ds$datasetId
+
+
+shortcuts
+---------------------------------------------------------------------------------------
+labelimg 
+labelImg D:\work\vision\pics\train2 classes.txt
+---------------------------------------------------------------------------------------
