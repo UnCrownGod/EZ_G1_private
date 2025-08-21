@@ -150,6 +150,7 @@ annotation_backned
 
 
 训练指令cheatsheet
+文件地址均以第一次测试为例
 # 1) 打开 PowerShell
 conda activate ann_backend
 Set-Location D:\work\vision
@@ -183,6 +184,14 @@ python scripts\export_yolo_dataset.py `
   --test-ratio 0.05 `
   --api-base http://127.0.0.1:8000
 
+### 新增 数据健康检查
+# 训练集
+python scripts/lint_yolo_labels.py --images .\runs\yolo_ds_3\images\train --labels .\runs\yolo_ds_3\labels\train --data-yaml .\runs\yolo_ds_3\data.yaml
+# 验证集
+python scripts/lint_yolo_labels.py --images .\runs\yolo_ds_3\images\val   --labels .\runs\yolo_ds_3\labels\val   --data-yaml .\runs\yolo_ds_3\data.yaml
+# 测试集
+python scripts/lint_yolo_labels.py --images .\runs\yolo_ds_3\images\test  --labels .\runs\yolo_ds_3\labels\test  --data-yaml .\runs\yolo_ds_3\data.yaml
+
 # 5) 训练（Ultralytics YOLO；batch 按显存改，比如 8/16；device=0 用第一块GPU）
 python scripts\train_yolo.py `
   --data .\runs\yolo_ds_$datasetId\data.yaml `
@@ -209,6 +218,6 @@ yolo val `
   project="runs\detect" name="val_ds$datasetId"
 
 # 8) 打开结果目录（可选）
-explorer .\runs\detect\w_lid_v1
-explorer .\runs\detect\pred_ds$datasetId
-explorer .\runs\detect\val_ds$datasetId
+explorer .\path\to\dir\detect\w_lid_v1
+explorer .\path\to\dir\detect\pred_ds$datasetId
+explorer .\path\to\dir\detect\val_ds$datasetId
