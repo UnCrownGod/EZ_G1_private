@@ -1,0 +1,6 @@
+model: "runs/detect/w_lid_v2/weights/best.pt"
+classes: ["plate holder","1d barcode","2d barcode"]
+conf: 0.25
+iou: 0.5
+max_det: 100
+device: 0

@@ -1,0 +1,9 @@
+grab_tube:
+  seek_tag_id: 0
+  stop_dist: 0.40
+  detect_class: "plate holder"
+  approach_height: 0.10
+  timeouts:
+    seek_tag_s: 10
+    detect_s: 8
+    align_s: 6

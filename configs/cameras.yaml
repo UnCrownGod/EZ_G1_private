@@ -1,0 +1,13 @@
+base:
+  max_lin_vel: 0.6      # m/s
+  max_ang_vel: 1.2      # rad/s
+  stop_dist: 0.35       # m，接近目标时停在距离
+gripper:
+  open_width: 0.06      # m
+  close_width: 0.00     # m
+  approach_height: 0.10 # m above grasp point
+arm:
+  enabled: false        # 先用夹爪占位；到货后再接 SDK
+sdk2:
+  # 如果官方 SDK2 客户端可 import，则在 unitree_sdk2_client.py 自动使用
+  endpoint: "127.0.0.1:8080"  # 仅占位（示例：本地桥）

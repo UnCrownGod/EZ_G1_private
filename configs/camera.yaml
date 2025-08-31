@@ -1,8 +1,0 @@
-# Camera intrinsics & distortion (example)
-# 相机内参与畸变（示例）
-K: [[1200.0, 0.0, 960.0],
-    [0.0, 1200.0, 540.0],
-    [0.0, 0.0, 1.0]]
-dist: [0.0, 0.0, 0.0, 0.0, 0.0]  # use real values after calibration
-tag_size_m: 0.05                 # 50 mm, replace with real measured edge
-valid_tag_ids: [0]               # allowed tag ids
