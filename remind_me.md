@@ -228,3 +228,91 @@ shortcuts
 labelimg 
 labelImg D:\work\vision\pics\train2 classes.txt
 ---------------------------------------------------------------------------------------
+
+
+下面是一份「最终确认清单」— 按顺序跑就行 ✅
+
+# 1) 校验 SSH 身份
+
+```powershell
+ssh -T git@e.coding.net
+ssh -T -p 443 git@ssh.github.com
+```
+
+预期输出：
+
+* Coding：出现 “You've connected to coding.net via SSH. This is a Personal Key.”
+* GitHub：出现 “Hi UnCrownGod! You've successfully authenticated, but GitHub does not provide shell access.”
+
+# 2) 检查 \~/.ssh/config
+
+```powershell
+notepad $env:USERPROFILE\.ssh\config
+```
+
+内容应类似：
+
+```
+Host e.coding.net
+  HostName e.coding.net
+  User git
+  IdentityFile C:/Users/admin/.ssh/coding_rsa
+  IdentitiesOnly yes
+
+Host github.com
+  HostName ssh.github.com
+  User git
+  Port 443
+  IdentityFile C:/Users/admin/.ssh/github_uncrowngod
+  IdentitiesOnly yes
+```
+
+# 3) 在项目内检查/设置远端
+
+```powershell
+cd C:\E\work\vision
+git remote -v
+```
+
+若没有或需要修正，设置为：
+
+```powershell
+git remote remove origin 2>$null
+git remote remove github 2>$null
+
+git remote add origin  git@e.coding.net:quanke/robot/vision.git
+git remote add github  git@github.com:UnCrownGod/EZ_G1_private.git
+```
+
+# 4) 提交并推送（两边各推一次）
+
+```powershell
+git add -A
+git commit -m "init: sync to Coding & GitHub"
+git push -u origin main
+git push -u github main
+```
+
+# 5) 常用命令速记
+
+```powershell
+git status
+git remote -v
+git push origin  main   # 推到 Coding
+git push github  main   # 推到 GitHub
+```
+
+# 6) 常见故障速查
+
+* **GitHub 走 22 端口失败**：确保 config 里 `Host github.com` 使用 `HostName ssh.github.com` 且 `Port 443`。
+* **提示用错钥匙/用户**：检查 `ssh -G github.com | findstr /i identityfile`，确认是 `github_uncrowngod`。
+* **权限被拒**：确认对应公钥已添加到 Coding/GitHub 账户的 SSH Keys。
+* **私钥权限**（可选）：
+
+  ```powershell
+  # 尽量只有当前用户可读写
+  icacls $env:USERPROFILE\.ssh\github_uncrowngod /inheritance:r
+  icacls $env:USERPROFILE\.ssh\github_uncrowngod /grant:r "$env:USERNAME:(R,W)"
+  ```
+
+搞定！以后只需按第4步分别 `push origin` 和 `push github` 就能同步到两家了。
