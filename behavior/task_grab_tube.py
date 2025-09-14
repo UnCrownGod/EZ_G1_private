@@ -14,7 +14,7 @@ import time, yaml, numpy as np, cv2
 from typing import Dict, Any
 from vision.perception.camera_stream import CameraStream
 from vision.perception.yolo_detector import YoloDetector
-from vision.perception.apriltag_pose import AprilTagPoseCV2
+from vision.perception.apriltag_tracker import AprilTagPoseCV2
 from vision.perception.calibration_utils import load_cam_from_yaml, load_tag_from_yaml
 from vision.fusion.pose_projector import bbox_center_to_ray, intersect_with_ground
 from vision.control.unitree_sdk2_client import UnitreeSDK2Client

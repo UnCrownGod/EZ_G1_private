@@ -24,3 +24,4 @@ def invert(T: np.ndarray) -> np.ndarray:
 
 def compose(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     return A @ B
+ 
