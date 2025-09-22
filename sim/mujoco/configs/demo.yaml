@@ -1,0 +1,25 @@
+﻿# Example MuJoCo demo configuration
+# Values are placeholders; replace with measured data.
+
+robot:
+  urdf_path: assets/g1_description/urdf/g1.urdf
+  default_base_pose: [0.0, 0.0, 0.0]
+  arm_home_joints: [0.0, -0.5, 1.0, -1.2, 0.0, 1.4, 0.0]
+
+table:
+  size: [0.6, 0.6, 0.05]  # meters (x, y, z)
+  pose: [1.0, 0.0, 0.4]
+
+box:
+  size: [0.05, 0.05, 0.12]
+  pose: [1.0, 0.0, 0.46]
+
+camera:
+  name: front_cam
+  fov: 60.0
+  resolution: [640, 480]
+  pose: [0.0, 0.0, 1.2, -0.5, 0.0, 0.0]
+
+sim:
+  timestep: 0.002
+  gravity: [0.0, 0.0, -9.81]
